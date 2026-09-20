@@ -23,5 +23,16 @@ pipeline {
                 sh "docker rmi ${DOCKER_IMAGE}:${env.BUILD_ID} ${DOCKER_IMAGE}:latest"
             }
         }
+        stage('Deploy to EKS') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'Type aws creds', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
+                    sh '''
+                    export AWS_DEFAULT_REGION=us-east-1
+                    aws eks update-kubeconfig --region us-east-1 --name trend-eks-cluster
+                    kubectl apply -f k8s-deployment.yaml
+                    '''
+                }
+            }
+        }
     }
 }
