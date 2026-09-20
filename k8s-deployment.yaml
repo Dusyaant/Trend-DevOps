@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trend-app-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: trend-app
+  template:
+    metadata:
+      labels:
+        app: trend-app
+    spec:
+      containers:
+      - name: trend-app
+        image: prospendeo/trend-app:latest
+        ports:
+        - containerPort: 80 # Adjust if your application uses a different internal port
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trend-app-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: trend-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
