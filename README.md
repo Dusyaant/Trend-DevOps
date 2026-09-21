@@ -120,7 +120,3 @@ terraform destroy --auto-approve
 ---
 
 **Author:** Dusyaant R.
-
-Your capstone project is now fully documented, highly professional, and ready to be graded!
-
-```
