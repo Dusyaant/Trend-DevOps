@@ -1,91 +1,126 @@
-DevOps Practice Project – Dist Directory
+# 🚀 DevOps Capstone Project: Trendify CI/CD Pipeline
 
-This repository contains the production-ready build files (dist folder) for DevOps practice and deployment exercises.
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=for-the-badge&logo=terraform&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=white)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)
+![Jenkins](https://img.shields.io/badge/Jenkins-D24939?style=for-the-badge&logo=jenkins&logoColor=white)
 
-It is intentionally structured to help learners focus on CI/CD pipelines, hosting, containerization, and infrastructure setup rather than application development.
+An end-to-end DevOps pipeline automating the containerization, infrastructure provisioning, and deployment of a static web application ("Trendify") to a managed AWS Elastic Kubernetes Service (EKS) cluster.
 
-📁 What This Repository Contains
+## 📋 Project Overview
+This repository contains the infrastructure as code (IaC), containerization, and Kubernetes configuration required to deploy the Trendify application. The primary goal of this capstone is to demonstrate a fully automated Continuous Integration and Continuous Deployment (CI/CD) pipeline.
 
-dist/ – Compiled and production-ready static files
+### 🛠️ Tech Stack & Tools
+* **Containerization:** Docker, Docker Hub
+* **Infrastructure as Code (IaC):** Terraform
+* **Cloud Provider:** Amazon Web Services (VPC, EC2, EKS, ELB, IAM)
+* **Container Orchestration:** Kubernetes (`kubectl`)
+* **CI/CD Automation:** Jenkins (Declarative Pipeline, GitHub Webhooks)
+* **Monitoring:** Kubernetes Metrics Server (Open-source)
+* **Version Control:** Git, GitHub
 
-HTML
+---
 
-CSS
+## 🏗️ Architecture & CI/CD Pipeline Explanation
 
-JavaScript
+The deployment process is fully automated via Jenkins. The pipeline executes the following stages:
+1. **Source Control:** Developer pushes code changes to the `main` branch on GitHub.
+2. **Trigger:** A GitHub Webhook automatically triggers the Jenkins pipeline.
+3. **Build:** Jenkins builds the Docker image from the provided `Dockerfile` (Configured to run Nginx on port `3000`).
+4. **Push:** Jenkins authenticates and pushes the new image (`prospendeo/trend-app:latest`) to Docker Hub.
+5. **Deploy:** Jenkins authenticates with AWS EKS (`update-kubeconfig`) and executes `kubectl apply` to roll out the latest `k8s-deployment.yaml` configurations.
+6. **Expose:** The Kubernetes Service provisions an AWS Load Balancer to route external HTTP traffic to the application on port `3000`.
 
-Assets (images, fonts, etc.)
+---
 
-These files are ready to deploy to:
+## ⚙️ Setup & Deployment Instructions
 
-Web servers (Nginx / Apache)
+### 1. Infrastructure Provisioning (Terraform)
+The underlying AWS infrastructure (VPC, Subnets, Jenkins EC2 instance, EKS Cluster, and Worker Nodes) is managed via Terraform.
+```bash
+terraform init
+terraform plan
+terraform apply --auto-approve
 
-Cloud platforms (AWS S3, Azure Blob, GCP Storage)
+```
 
-Containerized environments (Docker + Nginx)
+### 2. Jenkins Configuration
 
-Kubernetes clusters
+* Installed Jenkins on the provisioned Ubuntu 24.04 EC2 instance.
+* Installed required plugins: Docker Pipeline, Kubernetes CLI, AWS Credentials, Git.
+* Added global credentials for Docker Hub (`prospendeo`) and AWS IAM access keys.
+* Created a Pipeline project and integrated it with the GitHub repository URL.
 
-CI/CD pipeline demonstrations
+### 3. Application Deployment
 
-🎯 Purpose of This Repository
+The Kubernetes deployment consists of a ReplicaSet of 2 pods and a LoadBalancer service.
 
-This repository is designed for:
+```bash
+# Apply the deployment manually if bypassing Jenkins
+kubectl apply -f k8s-deployment.yaml
 
-DevOps beginners
+```
 
-CI/CD practice
+### 4. Cluster Monitoring (Metrics Server)
 
-Deployment pipeline testing
+To fulfill the open-source monitoring requirement, the official Kubernetes Metrics Server was deployed to track node and pod resource utilization (CPU/Memory).
 
-Docker & Kubernetes deployment exercises
+```bash
+# Install Metrics Server
+kubectl apply -f [https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml](https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml)
 
-Web server configuration practice
+# View live resource utilization
+kubectl top nodes
+kubectl top pods
 
-Reverse proxy and load balancer setup
+```
 
-The goal is to simulate real-world deployment scenarios using already built application files.
+---
 
-❓ Why is there NO package.json?
+## ⚠️ Important Note: AWS Load Balancer (ARN vs DNS)
 
-You may notice that this repository does not include:
+*Submission Guideline Note:* By default, Kubernetes provisions an AWS Classic Load Balancer (CLB), which uses a **DNS Name** instead of an **ARN**.
 
-package.json
+During deployment, an attempt was made to provision a Network Load Balancer (NLB) via the `service.beta.kubernetes.io/aws-load-balancer-type: nlb` annotation to generate a standard ARN. However, due to a strict AWS account restriction on this tier (`OperationNotPermitted: This AWS account currently does not support creating load balancers`), the NLB creation was blocked.
 
-node_modules
+As a result, the application was successfully exposed via the Classic Load Balancer. The live application was accessed via the following DNS Name:
 
-Source code (src/)
+* **Load Balancer URL:** `http://a7b449ee47fbc4140af262e4e1eca1c2-1417524296.us-east-1.elb.amazonaws.com`
 
-Build tools configuration
+---
 
-✅ Reason:
+## 📸 Project Evidence & Screenshots
 
-This repository only contains the final production build output (dist), not the development source code.
+All visual proof of the working pipeline, infrastructure, and application can be found in the `/screenshots` directory of this repository.
 
-In a typical project:
+* `1_Local_Docker_Container_Running.png` - App containerized on port 3000.
+* `2_DockerHub_Image_Pushed.png` - Docker Hub repository updated.
+* `3_Terraform_Apply_Success.png` - AWS infrastructure successfully built.
+* `4_Jenkins_Pipeline_Dashboard.png` - CI/CD pipeline automation success.
+* `6_Jenkins_Git_Webhook_Trigger.png` - Webhook integration.
+* `8_Trendify_App_Live_AWS_ELB.jpg` - Live app running on AWS Load Balancer.
+* `11_Metrics_Server_Resource_Usage.png` - `kubectl top` CPU/Memory monitoring data.
 
-Developers write source code.
+---
 
-The project is built using tools like:
+## 🧹 Cleanup
 
-Node.js
+To prevent ongoing AWS charges, the environment can be securely torn down in the following order:
 
-Webpack
+```bash
+# 1. Delete Kubernetes resources to detach the AWS Load Balancer
+kubectl delete -f k8s-deployment.yaml
 
-Vite
+# 2. Destroy the AWS infrastructure via Terraform
+terraform destroy --auto-approve
 
-React (or other frameworks)
+```
 
-A dist/ folder is generated.
+---
 
-Only the production build is deployed to servers.
+**Author:** Dusyaant R.
 
-This repository represents step 4 only.
+Your capstone project is now fully documented, highly professional, and ready to be graded!
 
-Since this is already the compiled output:
-
-No dependencies are required
-
-No build process is required
-
-No package.json is needed
+```
